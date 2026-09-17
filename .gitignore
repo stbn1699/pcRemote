@@ -1,3 +1,7 @@
 .idea
 
 /apps/backend/node_modules/*
+/apps/backend/package-lock.json
+
+/apps/desktop/node_modules/*
+/apps/desktop/package-lock.json
