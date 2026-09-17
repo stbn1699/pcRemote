@@ -5,3 +5,6 @@
 
 /apps/desktop/node_modules/*
 /apps/desktop/package-lock.json
+
+/apps/mobile/node_modules/*
+/apps/mobile/package-lock.json
