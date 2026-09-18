@@ -3,6 +3,7 @@ const {spawn} = require("node:child_process");
 const VOLUME_KEYS = {
 	volume_up: 0xAF,
 	volume_down: 0xAE,
+	volume_mute: 0xAD,
 };
 
 let volumeCommandQueue = Promise.resolve();

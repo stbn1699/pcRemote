@@ -15,6 +15,7 @@ const DEFAULT_BACKEND_URL = "http://192.168.1.42:3000";
 type CommandAction =
 	| "volume_up"
 	| "volume_down"
+	| "volume_mute"
 	| "window_next"
 	| "window_previous"
 	| "media_play_pause";
@@ -34,6 +35,7 @@ type RemoteCommand = {
 const COMMANDS: RemoteCommand[] = [
 	{label: "Volume +", action: "volume_up"},
 	{label: "Volume −", action: "volume_down"},
+	{label: "Mute", action: "volume_mute"},
 	{label: "Fenêtre suivante", action: "window_next"},
 	{label: "Fenêtre précédente", action: "window_previous"},
 	{label: "Pause / Lecture", action: "media_play_pause"}
@@ -66,7 +68,7 @@ export default function App() {
 		if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
 			Alert.alert(
 				"Adresse invalide",
-				"Utilise par exemple : http://192.168.1.42:3000"
+				"Utilise par exemple : http://192.168.1.2:3000"
 			);
 			return;
 		}

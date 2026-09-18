@@ -20,6 +20,7 @@ const pendingCommands = new Map();
 const ALLOWED_ACTIONS = new Set([
 	"volume_up",
 	"volume_down",
+	"volume_mute",
 	"window_next",
 	"window_previous",
 	"media_play_pause",
