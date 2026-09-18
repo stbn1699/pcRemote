@@ -10,14 +10,19 @@ const USER_TOKEN = "user-token-local-demo";
 const PC_ID = "pc-demo-001";
 
 // IMPORTANT : remplace cette IP par l'adresse IPv4 de TON PC.
-const DEFAULT_BACKEND_URL = "http://192.168.1.42:3000";
+const DEFAULT_BACKEND_URL = "http://192.168.1.2:3000";
 
 type CommandAction =
 	| "volume_up"
 	| "volume_down"
 	| "volume_mute"
-	| "window_next"
-	| "window_previous"
+	| "window_selector_open"
+	| "window_selector_left"
+	| "window_selector_up"
+	| "window_selector_right"
+	| "window_selector_down"
+	| "window_selector_ok"
+	| "window_selector_back"
 	| "media_play_pause";
 
 type CommandResult = {
@@ -36,8 +41,7 @@ const COMMANDS: RemoteCommand[] = [
 	{label: "Volume +", action: "volume_up"},
 	{label: "Volume −", action: "volume_down"},
 	{label: "Mute", action: "volume_mute"},
-	{label: "Fenêtre suivante", action: "window_next"},
-	{label: "Fenêtre précédente", action: "window_previous"},
+	{label: "Choisir une fenêtre", action: "window_selector_open"},
 	{label: "Pause / Lecture", action: "media_play_pause"}
 ];
 
@@ -49,6 +53,8 @@ export default function App() {
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
 	const [status, setStatus] = useState("Déconnectée");
 	const [isSending, setIsSending] = useState(false);
+	const [isWindowSelectorOpen, setIsWindowSelectorOpen] = useState(false);
+	const pendingActionRef = useRef<CommandAction | null>(null);
 
 	function disconnect() {
 		socketRef.current?.disconnect();
@@ -57,6 +63,8 @@ export default function App() {
 		setIsConnected(false);
 		setIsAuthenticated(false);
 		setIsSending(false);
+		setIsWindowSelectorOpen(false);
+		pendingActionRef.current = null;
 		setStatus("Déconnectée");
 	}
 
@@ -110,6 +118,17 @@ export default function App() {
 
 		socket.on("command:result", (result: CommandResult) => {
 			setIsSending(false);
+			const action = pendingActionRef.current;
+			pendingActionRef.current = null;
+
+			if (result.status === "executed" && action === "window_selector_open") {
+				setIsWindowSelectorOpen(true);
+			} else if (
+				result.status === "executed" &&
+				(action === "window_selector_ok" || action === "window_selector_back")
+			) {
+				setIsWindowSelectorOpen(false);
+			}
 
 			setStatus(
 				result.status === "executed"
@@ -142,6 +161,7 @@ export default function App() {
 			return;
 		}
 
+		pendingActionRef.current = action;
 		setIsSending(true);
 		setStatus("Transmission de la commande…");
 
@@ -196,7 +216,7 @@ export default function App() {
 					autoCapitalize="none"
 					autoCorrect={false}
 					keyboardType="url"
-					placeholder="http://192.168.1.42:3000"
+					placeholder="http://192.168.1.2:3000"
 					placeholderTextColor="#6b7280"
 					style={styles.input}
 				/>
@@ -224,21 +244,83 @@ export default function App() {
 				<Text style={styles.statusText}>{status}</Text>
 			</View>
 
-			<View style={styles.commands}>
-				{COMMANDS.map((command) => (
+			{isWindowSelectorOpen ? (
+				<View style={styles.selector}>
+					<Text style={styles.selectorTitle}>Choisir une fenêtre</Text>
+
+					<View style={styles.selectorRow}>
+						<View style={styles.selectorSpacer}/>
+						<Pressable
+							disabled={isSending}
+							onPress={() => sendCommand("window_selector_up")}
+							style={[styles.directionButton, isSending && styles.buttonDisabled]}
+						>
+							<Text style={styles.directionButtonText}>↑</Text>
+						</Pressable>
+						<View style={styles.selectorSpacer}/>
+					</View>
+
+					<View style={styles.selectorRow}>
+						<Pressable
+							disabled={isSending}
+							onPress={() => sendCommand("window_selector_left")}
+							style={[styles.directionButton, isSending && styles.buttonDisabled]}
+						>
+							<Text style={styles.directionButtonText}>←</Text>
+						</Pressable>
+						<Pressable
+							disabled={isSending}
+							onPress={() => sendCommand("window_selector_ok")}
+							style={[styles.directionButton, styles.okButton, isSending && styles.buttonDisabled]}
+						>
+							<Text style={styles.directionButtonText}>OK</Text>
+						</Pressable>
+						<Pressable
+							disabled={isSending}
+							onPress={() => sendCommand("window_selector_right")}
+							style={[styles.directionButton, isSending && styles.buttonDisabled]}
+						>
+							<Text style={styles.directionButtonText}>→</Text>
+						</Pressable>
+					</View>
+
+					<View style={styles.selectorRow}>
+						<View style={styles.selectorSpacer}/>
+						<Pressable
+							disabled={isSending}
+							onPress={() => sendCommand("window_selector_down")}
+							style={[styles.directionButton, isSending && styles.buttonDisabled]}
+						>
+							<Text style={styles.directionButtonText}>↓</Text>
+						</Pressable>
+						<View style={styles.selectorSpacer}/>
+					</View>
+
 					<Pressable
-						key={command.action}
-						disabled={!isAuthenticated || isSending}
-						onPress={() => sendCommand(command.action)}
-						style={[
-							styles.commandButton,
-							(!isAuthenticated || isSending) && styles.buttonDisabled
-						]}
+						disabled={isSending}
+						onPress={() => sendCommand("window_selector_back")}
+						style={[styles.backButton, isSending && styles.buttonDisabled]}
 					>
-						<Text style={styles.commandButtonText}>{command.label}</Text>
+						<Text style={styles.commandButtonText}>Retour</Text>
 					</Pressable>
-				))}
-			</View>
+				</View>
+			) : (
+				<View style={styles.commands}>
+					{COMMANDS.map((command) => (
+						<Pressable
+							key={command.action}
+							disabled={!isAuthenticated || isSending}
+							onPress={() => sendCommand(command.action)}
+							style={[
+								styles.commandButton,
+								(!isAuthenticated || isSending) && styles.buttonDisabled
+							]}
+						>
+							<Text style={styles.commandButtonText}>{command.label}</Text>
+						</Pressable>
+					))}
+				</View>
+			)}
 
 			{isSending && (
 				<View style={styles.loadingRow}>
@@ -360,5 +442,54 @@ const styles = StyleSheet.create({
 	loadingText: {
 		color: "#A78BFA",
 		marginLeft: 10
+	},
+	selector: {
+		alignItems: "center",
+		backgroundColor: "#1F2937",
+		borderColor: "#374151",
+		borderRadius: 16,
+		borderWidth: 1,
+		padding: 16
+	},
+	selectorTitle: {
+		color: "#FFF",
+		fontSize: 20,
+		fontWeight: "700",
+		marginBottom: 20
+	},
+	selectorRow: {
+		flexDirection: "row",
+		gap: 12,
+		marginBottom: 12
+	},
+	selectorSpacer: {
+		height: 64,
+		width: 64
+	},
+	directionButton: {
+		alignItems: "center",
+		backgroundColor: "#312E81",
+		borderColor: "#6366F1",
+		borderRadius: 14,
+		borderWidth: 1,
+		height: 64,
+		justifyContent: "center",
+		width: 64
+	},
+	directionButtonText: {
+		color: "#FFF",
+		fontSize: 22,
+		fontWeight: "800"
+	},
+	okButton: {
+		backgroundColor: "#047857"
+	},
+	backButton: {
+		alignItems: "center",
+		backgroundColor: "#4B5563",
+		borderRadius: 14,
+		marginTop: 8,
+		paddingVertical: 16,
+		width: "100%"
 	}
 });

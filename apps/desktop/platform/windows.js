@@ -6,10 +6,10 @@ const VOLUME_KEYS = {
 	volume_mute: 0xAD,
 };
 
-let volumeCommandQueue = Promise.resolve();
-let volumePowerShell;
-let volumePowerShellBuffer = "";
-const volumePowerShellWaiters = [];
+let commandQueue = Promise.resolve();
+let powerShell;
+let powerShellBuffer = "";
+const powerShellWaiters = [];
 
 function createVolumePowerShell() {
 	if (process.platform !== "win32") {
@@ -27,9 +27,18 @@ public static class NativeMethods {
 "@
 while ($null -ne ($line = [Console]::In.ReadLine())) {
 	try {
-		$key = [byte][int]$line
-		[NativeMethods]::keybd_event($key, 0, 0, [UIntPtr]::Zero)
-		[NativeMethods]::keybd_event($key, 0, 2, [UIntPtr]::Zero)
+		$parts = $line.Split(":")
+		$key = [byte][int]$parts[1]
+		if ($parts[0] -eq "down") {
+			[NativeMethods]::keybd_event($key, 0, 0, [UIntPtr]::Zero)
+		} elseif ($parts[0] -eq "up") {
+			[NativeMethods]::keybd_event($key, 0, 2, [UIntPtr]::Zero)
+		} elseif ($parts[0] -eq "tap") {
+			[NativeMethods]::keybd_event($key, 0, 0, [UIntPtr]::Zero)
+			[NativeMethods]::keybd_event($key, 0, 2, [UIntPtr]::Zero)
+		} else {
+			throw "Type de touche inconnu : $($parts[0])"
+		}
 		[Console]::Out.WriteLine("OK")
 	} catch {
 		[Console]::Out.WriteLine("ERR:" + $_.Exception.Message)
@@ -52,23 +61,48 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
 
 	child.stdout.setEncoding("utf8");
 	child.stdout.on("data", (chunk) => {
-		volumePowerShellBuffer += chunk;
+		powerShellBuffer += chunk;
 
-		while (volumePowerShellBuffer.includes("\n")) {
-			const newlineIndex = volumePowerShellBuffer.indexOf("\n");
-			const response = volumePowerShellBuffer.slice(0, newlineIndex).trim();
-			volumePowerShellBuffer = volumePowerShellBuffer.slice(newlineIndex + 1);
-			volumePowerShellWaiters.shift()?.(response);
+		while (powerShellBuffer.includes("\n")) {
+			const newlineIndex = powerShellBuffer.indexOf("\n");
+			const response = powerShellBuffer.slice(0, newlineIndex).trim();
+			powerShellBuffer = powerShellBuffer.slice(newlineIndex + 1);
+			powerShellWaiters.shift()?.(response);
 		}
 	});
 
 	child.on("error", (error) => {
-		while (volumePowerShellWaiters.length > 0) {
-			volumePowerShellWaiters.shift()?.(`ERR:${error.message}`);
+		while (powerShellWaiters.length > 0) {
+			powerShellWaiters.shift()?.(`ERR:${error.message}`);
 		}
 	});
 
 	return child;
+}
+
+function sendWindowsInput(inputs) {
+	if (process.platform !== "win32") {
+		return Promise.reject(new Error("Les commandes Windows nécessitent Windows."));
+	}
+
+	powerShell ??= createVolumePowerShell();
+	commandQueue = commandQueue.catch(() => {}).then(async () => {
+		for (const input of inputs) {
+			await new Promise((resolve, reject) => {
+				powerShellWaiters.push((response) => {
+					if (response === "OK") {
+						resolve();
+					} else {
+						reject(new Error(response.replace(/^ERR:/, "")));
+					}
+				});
+
+				powerShell.stdin.write(`${input.type}:${input.key}\n`);
+			});
+		}
+	});
+
+	return commandQueue;
 }
 
 function sendVolumeKey(action) {
@@ -78,26 +112,24 @@ function sendVolumeKey(action) {
 		return Promise.reject(new Error(`Commande de volume inconnue : ${action}`));
 	}
 
-	if (process.platform !== "win32") {
-		return Promise.reject(new Error("Les commandes de volume nécessitent Windows."));
-	}
+	return sendWindowsInput([{type: "tap", key: virtualKeyCode}]);
+}
 
-	volumePowerShell ??= createVolumePowerShell();
-	volumeCommandQueue = volumeCommandQueue.catch(() => {}).then(() => new Promise((resolve, reject) => {
-		volumePowerShellWaiters.push((response) => {
-			if (response === "OK") {
-				resolve();
-			} else {
-				reject(new Error(response.replace(/^ERR:/, "")));
-			}
-		});
+function tapKey(key) {
+	return sendWindowsInput([{type: "tap", key}]);
+}
 
-		volumePowerShell.stdin.write(`${virtualKeyCode}\n`);
-	}));
+function keyDown(key) {
+	return sendWindowsInput([{type: "down", key}]);
+}
 
-	return volumeCommandQueue;
+function keyUp(key) {
+	return sendWindowsInput([{type: "up", key}]);
 }
 
 module.exports = {
+	keyDown,
+	keyUp,
 	sendVolumeKey,
+	tapKey,
 };
