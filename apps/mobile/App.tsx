@@ -23,6 +23,8 @@ type CommandAction =
 	| "window_selector_down"
 	| "window_selector_ok"
 	| "window_selector_back"
+	| "youtube_seek_backward"
+	| "youtube_seek_forward"
 	| "youtube_toggle_playback"
 	| "youtube_fullscreen"
 	| "keyboard_text"
@@ -38,6 +40,7 @@ type CommandResult = {
 type RemoteCommand = {
 	label: string;
 	action: CommandAction;
+	buttonsPerRow: 1 | 2;
 };
 
 type KeyboardPayload = {
@@ -46,19 +49,57 @@ type KeyboardPayload = {
 };
 
 const COMMANDS: RemoteCommand[] = [
-	/*{label: "Volume +", action: "volume_up"},
-	{label: "Volume −", action: "volume_down"},
-	{label: "Mute", action: "volume_mute"},
-	{label: "Choisir une fenêtre", action: "window_selector_open"}*/
+	/*{label: "Volume +", action: "volume_up", buttonsPerRow: 1},
+	{label: "Volume −", action: "volume_down", buttonsPerRow: 1},
+	{label: "Mute", action: "volume_mute", buttonsPerRow: 1},
+	{label: "Choisir une fenêtre", action: "window_selector_open", buttonsPerRow: 1}*/
 ];
 
 const YOUTUBE_COMMANDS: RemoteCommand[] = [
-	{label: "Play / Pause", action: "youtube_toggle_playback"},
-	{label: "Plein écran", action: "youtube_fullscreen"}
+	{label: "Play / Pause", action: "youtube_toggle_playback", buttonsPerRow: 1},
+    {label: "-5s", action: "youtube_seek_backward", buttonsPerRow: 2},
+    {label: "+5s", action: "youtube_seek_forward", buttonsPerRow: 2},
+	{label: "Plein écran", action: "youtube_fullscreen", buttonsPerRow: 1}
 ];
 
 export default function App() {
 	const socketRef = useRef<Socket | null>(null);
+
+	function renderCommandList(commands: RemoteCommand[]) {
+		const rows = [];
+
+		for (let index = 0; index < commands.length; index += 1) {
+			const command = commands[index];
+			const rowCommands = command.buttonsPerRow === 2
+				? commands.slice(index, index + 2)
+				: [command];
+
+			rows.push(
+				<View key={command.action} style={styles.commandRow}>
+					{rowCommands.map((rowCommand) => (
+						<Pressable
+							key={rowCommand.action}
+							disabled={!isAuthenticated || isSending}
+							onPress={() => sendCommand(rowCommand.action)}
+							style={[
+								styles.commandButton,
+								rowCommand.buttonsPerRow === 1
+									? styles.fullWidthCommandButton
+									: styles.halfWidthCommandButton,
+								(!isAuthenticated || isSending) && styles.buttonDisabled
+							]}
+						>
+							<Text style={styles.commandButtonText}>{rowCommand.label}</Text>
+						</Pressable>
+					))}
+				</View>
+			);
+
+			index += rowCommands.length - 1;
+		}
+
+		return rows;
+	}
 
 	const [backendUrl, setBackendUrl] = useState(DEFAULT_BACKEND_URL);
 	const [isConnected, setIsConnected] = useState(false);
@@ -435,35 +476,11 @@ export default function App() {
 						</Pressable>
 					)}
 
-					{COMMANDS.map((command) => (
-						<Pressable
-							key={command.action}
-							disabled={!isAuthenticated || isSending}
-							onPress={() => sendCommand(command.action)}
-							style={[
-								styles.commandButton,
-								(!isAuthenticated || isSending) && styles.buttonDisabled
-							]}
-						>
-							<Text style={styles.commandButtonText}>{command.label}</Text>
-						</Pressable>
-					))}
+					{renderCommandList(COMMANDS)}
 
 					<Text style={styles.sectionTitle}>YouTube</Text>
 
-					{YOUTUBE_COMMANDS.map((command) => (
-						<Pressable
-							key={command.action}
-							disabled={!isAuthenticated || isSending}
-							onPress={() => sendCommand(command.action)}
-							style={[
-								styles.commandButton,
-								(!isAuthenticated || isSending) && styles.buttonDisabled
-							]}
-						>
-							<Text style={styles.commandButtonText}>{command.label}</Text>
-						</Pressable>
-					))}
+					{renderCommandList(YOUTUBE_COMMANDS)}
 				</View>
 			)}
 
@@ -584,6 +601,16 @@ const styles = StyleSheet.create({
 		marginTop: 8,
 		paddingBottom: 8,
 		textTransform: "uppercase"
+	},
+	commandRow: {
+		flexDirection: "row",
+		gap: 12
+	},
+	halfWidthCommandButton: {
+		flex: 1
+	},
+	fullWidthCommandButton: {
+		flex: 1
 	},
 	keyboardButton: {
 		alignItems: "center",
