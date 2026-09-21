@@ -23,6 +23,7 @@ type CommandAction =
 	| "window_selector_down"
 	| "window_selector_ok"
 	| "window_selector_back"
+	| "youtube_toggle_playback"
 	| "youtube_fullscreen"
 	| "keyboard_text"
 	| "keyboard_clear";
@@ -52,6 +53,7 @@ const COMMANDS: RemoteCommand[] = [
 ];
 
 const YOUTUBE_COMMANDS: RemoteCommand[] = [
+	{label: "Play / Pause", action: "youtube_toggle_playback"},
 	{label: "Plein écran", action: "youtube_fullscreen"}
 ];
 
