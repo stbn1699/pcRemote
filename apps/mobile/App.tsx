@@ -2,7 +2,7 @@ import "react-native-get-random-values";
 
 import { randomUUID } from "expo-crypto";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Keyboard, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
 import { io, Socket } from "socket.io-client";
 
 const USER_ID = "user-demo-001";
@@ -23,7 +23,9 @@ type CommandAction =
 	| "window_selector_down"
 	| "window_selector_ok"
 	| "window_selector_back"
-	| "media_play_pause";
+	| "media_play_pause"
+	| "keyboard_text"
+	| "keyboard_clear";
 
 type CommandResult = {
 	commandId: string;
@@ -35,6 +37,11 @@ type CommandResult = {
 type RemoteCommand = {
 	label: string;
 	action: CommandAction;
+};
+
+type KeyboardPayload = {
+	text: string;
+	submit?: boolean;
 };
 
 const COMMANDS: RemoteCommand[] = [
@@ -54,7 +61,11 @@ export default function App() {
 	const [status, setStatus] = useState("Déconnectée");
 	const [isSending, setIsSending] = useState(false);
 	const [isWindowSelectorOpen, setIsWindowSelectorOpen] = useState(false);
-	const pendingActionRef = useRef<CommandAction | null>(null);
+	const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+	const [keyboardText, setKeyboardText] = useState("");
+	const keyboardTextRef = useRef("");
+	const pendingActionsRef = useRef(new Map<string, CommandAction>());
+	const pendingKeyboardTextsRef = useRef(new Map<string, string>());
 
 	function disconnect() {
 		socketRef.current?.disconnect();
@@ -64,7 +75,11 @@ export default function App() {
 		setIsAuthenticated(false);
 		setIsSending(false);
 		setIsWindowSelectorOpen(false);
-		pendingActionRef.current = null;
+		setIsKeyboardOpen(false);
+		setKeyboardText("");
+		keyboardTextRef.current = "";
+		pendingActionsRef.current.clear();
+		pendingKeyboardTextsRef.current.clear();
 		setStatus("Déconnectée");
 	}
 
@@ -117,9 +132,24 @@ export default function App() {
 		});
 
 		socket.on("command:result", (result: CommandResult) => {
-			setIsSending(false);
-			const action = pendingActionRef.current;
-			pendingActionRef.current = null;
+			const action = pendingActionsRef.current.get(result.commandId);
+			pendingActionsRef.current.delete(result.commandId);
+			const sentKeyboardText = pendingKeyboardTextsRef.current.get(result.commandId);
+			pendingKeyboardTextsRef.current.delete(result.commandId);
+
+			if (action !== "keyboard_text" && action !== "keyboard_clear") {
+				setIsSending(false);
+			} else if (
+				result.status === "executed" &&
+				sentKeyboardText !== undefined &&
+				keyboardTextRef.current === sentKeyboardText
+			) {
+				keyboardTextRef.current = "";
+				setKeyboardText("");
+			} else if (result.status === "executed" && action === "keyboard_clear") {
+				keyboardTextRef.current = "";
+				setKeyboardText("");
+			}
 
 			if (result.status === "executed" && action === "window_selector_open") {
 				setIsWindowSelectorOpen(true);
@@ -133,7 +163,7 @@ export default function App() {
 			setStatus(
 				result.status === "executed"
 					? `Exécutée : ${result.message ?? "OK"}`
-					: `Résultat : ${result.status}`
+					: `Échec : ${result.message ?? result.status}`
 			);
 		});
 
@@ -153,7 +183,7 @@ export default function App() {
 		});
 	}
 
-	function sendCommand(action: CommandAction) {
+	function sendCommand(action: CommandAction, payload: KeyboardPayload | null = null) {
 		const socket = socketRef.current;
 
 		if (!socket || !isAuthenticated) {
@@ -161,17 +191,24 @@ export default function App() {
 			return;
 		}
 
-		pendingActionRef.current = action;
-		setIsSending(true);
-		setStatus("Transmission de la commande…");
+		const commandId = randomUUID();
+		pendingActionsRef.current.set(commandId, action);
+		if (action === "keyboard_text" && payload) {
+			pendingKeyboardTextsRef.current.set(commandId, payload.text);
+		}
+
+		if (action !== "keyboard_text") {
+			setIsSending(true);
+			setStatus("Transmission de la commande…");
+		}
 
 		socket.emit(
 			"command:send",
 			{
-				commandId: randomUUID(),
+				commandId,
 				pcId: PC_ID,
 				action,
-				payload: null
+				payload
 			},
 			(response: {
 				ok: boolean;
@@ -179,18 +216,52 @@ export default function App() {
 				status?: string;
 			}) => {
 				if (!response?.ok) {
-					setIsSending(false);
-					setStatus("Commande refusée");
-					Alert.alert(
-						"Commande refusée",
-						response?.error ?? "Le backend a refusé la commande."
-					);
+					pendingActionsRef.current.delete(commandId);
+					pendingKeyboardTextsRef.current.delete(commandId);
+					if (action !== "keyboard_text") {
+						setIsSending(false);
+						setStatus("Commande refusée");
+						Alert.alert(
+							"Commande refusée",
+							response?.error ?? "Le backend a refusé la commande."
+						);
+					} else {
+						console.error("[mobile] Commande clavier refusée :", response?.error);
+					}
 					return;
 				}
 
-				setStatus("Commande transmise au PC…");
+				if (action !== "keyboard_text") {
+					setStatus("Commande transmise au PC…");
+				}
 			}
 		);
+	}
+
+	function toggleKeyboard() {
+		if (isKeyboardOpen) {
+			Keyboard.dismiss();
+			setIsKeyboardOpen(false);
+			keyboardTextRef.current = "";
+			setKeyboardText("");
+			return;
+		}
+
+		keyboardTextRef.current = "";
+		setKeyboardText("");
+		setIsKeyboardOpen(true);
+	}
+
+	function sendKeyboardText() {
+		if (keyboardText.length === 0) {
+			return;
+		}
+
+		sendCommand("keyboard_text", {text: keyboardText, submit: true});
+	}
+
+	function clearKeyboardText() {
+		sendCommand("keyboard_clear");
 	}
 
 	useEffect(() => {
@@ -306,6 +377,59 @@ export default function App() {
 				</View>
 			) : (
 				<View style={styles.commands}>
+					<Pressable
+						disabled={!isAuthenticated}
+						onPress={toggleKeyboard}
+						style={[styles.keyboardButton, !isAuthenticated && styles.buttonDisabled]}
+					>
+						<Text style={styles.commandButtonText}>
+							{isKeyboardOpen ? "Fermer le clavier" : "Ouvrir le clavier"}
+						</Text>
+					</Pressable>
+
+					{isKeyboardOpen && (
+						<View style={styles.keyboardRow}>
+							<TextInput
+								autoFocus
+								value={keyboardText}
+								onChangeText={(text) => {
+									keyboardTextRef.current = text;
+									setKeyboardText(text);
+								}}
+								editable={isAuthenticated}
+								autoCapitalize="sentences"
+								autoCorrect={false}
+								returnKeyType="send"
+								onSubmitEditing={sendKeyboardText}
+								placeholder="Tapez ici pour écrire sur le PC"
+								placeholderTextColor="#9CA3AF"
+								style={styles.keyboardInput}
+							/>
+							<Pressable
+								accessibilityLabel="Envoyer le texte au PC"
+								disabled={!isAuthenticated || keyboardText.length === 0}
+								onPress={sendKeyboardText}
+								style={[
+									styles.sendButton,
+									(!isAuthenticated || keyboardText.length === 0) && styles.buttonDisabled
+								]}
+							>
+								<Text style={styles.sendButtonText}>➤</Text>
+							</Pressable>
+						</View>
+					)}
+
+					{isKeyboardOpen && (
+						<Pressable
+							accessibilityLabel="Effacer le champ texte du PC"
+							disabled={!isAuthenticated}
+							onPress={clearKeyboardText}
+							style={[styles.clearButton, !isAuthenticated && styles.buttonDisabled]}
+						>
+							<Text style={styles.clearButtonText}>Ctrl+A · Effacer</Text>
+						</Pressable>
+					)}
+
 					{COMMANDS.map((command) => (
 						<Pressable
 							key={command.action}
@@ -429,6 +553,55 @@ const styles = StyleSheet.create({
 		color: "#FFF",
 		fontSize: 17,
 		fontWeight: "700"
+	},
+	keyboardButton: {
+		alignItems: "center",
+		backgroundColor: "#047857",
+		borderColor: "#10B981",
+		borderRadius: 14,
+		borderWidth: 1,
+		paddingVertical: 18
+	},
+	keyboardInput: {
+		backgroundColor: "#FFF",
+		borderRadius: 12,
+		color: "#111827",
+		fontSize: 18,
+		flex: 1,
+		minHeight: 54,
+		paddingHorizontal: 14,
+		paddingVertical: 12
+	},
+	keyboardRow: {
+		alignItems: "center",
+		flexDirection: "row",
+		gap: 8
+	},
+	sendButton: {
+		alignItems: "center",
+		backgroundColor: "#7C3AED",
+		borderRadius: 12,
+		height: 54,
+		justifyContent: "center",
+		width: 54
+	},
+	sendButtonText: {
+		color: "#FFF",
+		fontSize: 24,
+		fontWeight: "800",
+		transform: [{rotate: "-25deg"}]
+	},
+	clearButton: {
+		alignItems: "center",
+		backgroundColor: "#4B5563",
+		borderRadius: 10,
+		marginTop: 8,
+		paddingVertical: 10
+	},
+	clearButtonText: {
+		color: "#FFF",
+		fontSize: 14,
+		fontWeight: "600"
 	},
 	buttonDisabled: {
 		opacity: 0.4

@@ -23,19 +23,55 @@ using System.Runtime.InteropServices;
 public static class NativeMethods {
 	[DllImport("user32.dll")]
 	public static extern void keybd_event(byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
+
+	[StructLayout(LayoutKind.Sequential)]
+	public struct KEYBDINPUT {
+		public ushort wVk;
+		public ushort wScan;
+		public uint dwFlags;
+		public uint time;
+		public UIntPtr dwExtraInfo;
+	}
+
+	[StructLayout(LayoutKind.Explicit, Size = 40)]
+	public struct INPUT {
+		[FieldOffset(0)]
+		public uint type;
+		[FieldOffset(8)]
+		public KEYBDINPUT ki;
+	}
+
+	[DllImport("user32.dll", SetLastError = true)]
+	public static extern uint SendInput(uint numberOfInputs, INPUT[] inputs, int size);
+
+	public static void unicode_keybd_event(ushort character) {
+		var inputs = new INPUT[2];
+		inputs[0].type = 1;
+		inputs[0].ki.wScan = character;
+		inputs[0].ki.dwFlags = 4;
+		inputs[1].type = 1;
+		inputs[1].ki.wScan = character;
+		inputs[1].ki.dwFlags = 6;
+		var sent = SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+		if (sent != 2) {
+			throw new Exception("Impossible d'envoyer le caractère Unicode. Code Win32 : " + Marshal.GetLastWin32Error());
+		}
+	}
 }
 "@
 while ($null -ne ($line = [Console]::In.ReadLine())) {
 	try {
 		$parts = $line.Split(":")
-		$key = [byte][int]$parts[1]
+		$key = [int]$parts[1]
 		if ($parts[0] -eq "down") {
-			[NativeMethods]::keybd_event($key, 0, 0, [UIntPtr]::Zero)
+			[NativeMethods]::keybd_event([byte]$key, 0, 0, [UIntPtr]::Zero)
 		} elseif ($parts[0] -eq "up") {
-			[NativeMethods]::keybd_event($key, 0, 2, [UIntPtr]::Zero)
+			[NativeMethods]::keybd_event([byte]$key, 0, 2, [UIntPtr]::Zero)
 		} elseif ($parts[0] -eq "tap") {
-			[NativeMethods]::keybd_event($key, 0, 0, [UIntPtr]::Zero)
-			[NativeMethods]::keybd_event($key, 0, 2, [UIntPtr]::Zero)
+			[NativeMethods]::keybd_event([byte]$key, 0, 0, [UIntPtr]::Zero)
+			[NativeMethods]::keybd_event([byte]$key, 0, 2, [UIntPtr]::Zero)
+		} elseif ($parts[0] -eq "unicode") {
+			[NativeMethods]::unicode_keybd_event([uint16]$key)
 		} else {
 			throw "Type de touche inconnu : $($parts[0])"
 		}
@@ -127,9 +163,19 @@ function keyUp(key) {
 	return sendWindowsInput([{type: "up", key}]);
 }
 
+function sendText(text) {
+	const inputs = text.split("").map((character) => ({
+		type: character === "\b" || character === "\n" ? "tap" : "unicode",
+		key: character === "\b" ? 0x08 : character === "\n" ? 0x0D : character.charCodeAt(0),
+	}));
+
+	return sendWindowsInput(inputs);
+}
+
 module.exports = {
 	keyDown,
 	keyUp,
+	sendText,
 	sendVolumeKey,
 	tapKey,
 };

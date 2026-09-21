@@ -29,6 +29,8 @@ const ALLOWED_ACTIONS = new Set([
 	"window_selector_ok",
 	"window_selector_back",
 	"media_play_pause",
+	"keyboard_text",
+	"keyboard_clear",
 	"youtube_toggle_playback",
 	"youtube_next_video",
 ]);

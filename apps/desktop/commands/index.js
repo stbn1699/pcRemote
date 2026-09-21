@@ -1,11 +1,13 @@
 const volumeCommands = require("./volume");
 const windowCommands = require("./windows");
 const mediaCommands = require("./media");
+const keyboardCommands = require("./keyboard");
 
 const commandHandlers = {
 	...volumeCommands,
 	...windowCommands,
 	...mediaCommands,
+	...keyboardCommands,
 };
 
 async function executeCommand(command) {
