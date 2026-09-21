@@ -45,10 +45,10 @@ type KeyboardPayload = {
 };
 
 const COMMANDS: RemoteCommand[] = [
-	{label: "Volume +", action: "volume_up"},
+	/*{label: "Volume +", action: "volume_up"},
 	{label: "Volume −", action: "volume_down"},
 	{label: "Mute", action: "volume_mute"},
-	{label: "Choisir une fenêtre", action: "window_selector_open"}
+	{label: "Choisir une fenêtre", action: "window_selector_open"}*/
 ];
 
 const YOUTUBE_COMMANDS: RemoteCommand[] = [
