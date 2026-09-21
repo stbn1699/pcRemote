@@ -27,6 +27,7 @@ type CommandAction =
 	| "youtube_seek_forward"
 	| "youtube_previous_video"
 	| "youtube_next_video"
+	| "youtube_open_search"
 	| "youtube_toggle_playback"
 	| "youtube_fullscreen"
 	| "keyboard_text"
@@ -63,7 +64,8 @@ const YOUTUBE_COMMANDS: RemoteCommand[] = [
     {label: "+5s", action: "youtube_seek_forward", buttonsPerRow: 2},
 	{label: "Vidéo précédente", action: "youtube_previous_video", buttonsPerRow: 2},
 	{label: "Vidéo suivante", action: "youtube_next_video", buttonsPerRow: 2},
-	{label: "Plein écran", action: "youtube_fullscreen", buttonsPerRow: 1}
+    {label: "Rechercher sur YouTube", action: "youtube_open_search", buttonsPerRow: 1},
+    {label: "Plein écran", action: "youtube_fullscreen", buttonsPerRow: 1}
 ];
 
 export default function App() {
@@ -84,7 +86,12 @@ export default function App() {
 						<Pressable
 							key={rowCommand.action}
 							disabled={!isAuthenticated || isSending}
-							onPress={() => sendCommand(rowCommand.action)}
+							onPress={() => {
+								sendCommand(rowCommand.action);
+								if (rowCommand.action === "youtube_open_search" && !isKeyboardOpen) {
+									toggleKeyboard();
+								}
+							}}
 							style={[
 								styles.commandButton,
 								rowCommand.buttonsPerRow === 1

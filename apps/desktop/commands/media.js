@@ -35,6 +35,10 @@ const mediaCommands = {
 		await tapShiftedKey(N_KEY);
 		return "Vidéo YouTube suivante";
 	},
+	youtube_open_search: async () => {
+		await tapKey(0xBF);
+		return "Recherche YouTube ouverte";
+	},
 	youtube_fullscreen: async () => {
 		await tapKey(0x46);
 		return "Mode plein écran YouTube activé";

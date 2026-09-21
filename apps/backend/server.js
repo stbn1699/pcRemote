@@ -36,6 +36,7 @@ const ALLOWED_ACTIONS = new Set([
 	"youtube_previous_video",
 	"youtube_toggle_playback",
 	"youtube_next_video",
+	"youtube_open_search",
 	"youtube_fullscreen",
 ]);
 
