@@ -33,6 +33,7 @@ const ALLOWED_ACTIONS = new Set([
 	"keyboard_clear",
 	"youtube_toggle_playback",
 	"youtube_next_video",
+	"youtube_fullscreen",
 ]);
 
 function getPcRoom(pcId) {

@@ -23,7 +23,7 @@ type CommandAction =
 	| "window_selector_down"
 	| "window_selector_ok"
 	| "window_selector_back"
-	| "media_play_pause"
+	| "youtube_fullscreen"
 	| "keyboard_text"
 	| "keyboard_clear";
 
@@ -48,8 +48,11 @@ const COMMANDS: RemoteCommand[] = [
 	{label: "Volume +", action: "volume_up"},
 	{label: "Volume −", action: "volume_down"},
 	{label: "Mute", action: "volume_mute"},
-	{label: "Choisir une fenêtre", action: "window_selector_open"},
-	{label: "Pause / Lecture", action: "media_play_pause"}
+	{label: "Choisir une fenêtre", action: "window_selector_open"}
+];
+
+const YOUTUBE_COMMANDS: RemoteCommand[] = [
+	{label: "Plein écran", action: "youtube_fullscreen"}
 ];
 
 export default function App() {
@@ -443,6 +446,22 @@ export default function App() {
 							<Text style={styles.commandButtonText}>{command.label}</Text>
 						</Pressable>
 					))}
+
+					<Text style={styles.sectionTitle}>YouTube</Text>
+
+					{YOUTUBE_COMMANDS.map((command) => (
+						<Pressable
+							key={command.action}
+							disabled={!isAuthenticated || isSending}
+							onPress={() => sendCommand(command.action)}
+							style={[
+								styles.commandButton,
+								(!isAuthenticated || isSending) && styles.buttonDisabled
+							]}
+						>
+							<Text style={styles.commandButtonText}>{command.label}</Text>
+						</Pressable>
+					))}
 				</View>
 			)}
 
@@ -553,6 +572,16 @@ const styles = StyleSheet.create({
 		color: "#FFF",
 		fontSize: 17,
 		fontWeight: "700"
+	},
+	sectionTitle: {
+		borderBottomColor: "#374151",
+		borderBottomWidth: 1,
+		color: "#A78BFA",
+		fontSize: 15,
+		fontWeight: "800",
+		marginTop: 8,
+		paddingBottom: 8,
+		textTransform: "uppercase"
 	},
 	keyboardButton: {
 		alignItems: "center",
