@@ -25,6 +25,8 @@ type CommandAction =
 	| "window_selector_back"
 	| "youtube_seek_backward"
 	| "youtube_seek_forward"
+	| "youtube_previous_video"
+	| "youtube_next_video"
 	| "youtube_toggle_playback"
 	| "youtube_fullscreen"
 	| "keyboard_text"
@@ -59,6 +61,8 @@ const YOUTUBE_COMMANDS: RemoteCommand[] = [
 	{label: "Play / Pause", action: "youtube_toggle_playback", buttonsPerRow: 1},
     {label: "-5s", action: "youtube_seek_backward", buttonsPerRow: 2},
     {label: "+5s", action: "youtube_seek_forward", buttonsPerRow: 2},
+	{label: "Vidéo précédente", action: "youtube_previous_video", buttonsPerRow: 2},
+	{label: "Vidéo suivante", action: "youtube_next_video", buttonsPerRow: 2},
 	{label: "Plein écran", action: "youtube_fullscreen", buttonsPerRow: 1}
 ];
 
