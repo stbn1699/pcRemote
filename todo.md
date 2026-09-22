@@ -29,19 +29,19 @@ Objectif final :
 
 ## 1. Nettoyage de l'existant
 
-- [ ] Faire un état des lieux des applications `desktop`, `mobile` et
+- [x] Faire un état des lieux des applications `desktop`, `mobile` et
   `backend`.
-- [ ] Identifier les fonctionnalités desktop à conserver.
-- [ ] Identifier les éléments mobiles à réutiliser uniquement si nécessaire.
-- [ ] Supprimer le code du backend.
-- [ ] Supprimer les dépendances du backend.
-- [ ] Supprimer les scripts de démarrage et la documentation qui dépendent du
+- [x] Identifier les fonctionnalités desktop à conserver.
+- [x] Identifier les éléments mobiles à réutiliser uniquement si nécessaire.
+- [x] Supprimer le code du backend.
+- [x] Supprimer les dépendances du backend.
+- [x] Supprimer les scripts de démarrage et la documentation qui dépendent du
   backend.
-- [ ] Supprimer les dépendances Socket.IO devenues inutiles.
-- [ ] Retirer les identifiants, tokens et URLs de démonstration codés en dur.
-- [ ] Mettre à jour le `.gitignore`.
-- [ ] Mettre à jour le `README.md`.
-- [ ] Vérifier que le dépôt ne contient plus de référence fonctionnelle au
+- [x] Supprimer les dépendances Socket.IO devenues inutiles.
+- [x] Retirer les identifiants, tokens et URLs de démonstration codés en dur.
+- [x] Mettre à jour le `.gitignore`.
+- [x] Mettre à jour le `README.md`.
+- [x] Vérifier que le dépôt ne contient plus de référence fonctionnelle au
   backend supprimé.
 
 ## 2. Architecture de communication locale
