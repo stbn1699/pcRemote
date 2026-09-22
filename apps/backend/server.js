@@ -31,8 +31,13 @@ const ALLOWED_ACTIONS = new Set([
 	"media_play_pause",
 	"keyboard_text",
 	"keyboard_clear",
+	"youtube_seek_backward",
+	"youtube_seek_forward",
+	"youtube_previous_video",
 	"youtube_toggle_playback",
 	"youtube_next_video",
+	"youtube_open_search",
+	"youtube_fullscreen",
 ]);
 
 function getPcRoom(pcId) {
